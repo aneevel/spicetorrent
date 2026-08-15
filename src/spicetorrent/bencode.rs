@@ -9,13 +9,28 @@ pub fn decode_integer(chunk: &String) -> Result<i32, String> {
     }
 
     let mut multiplier = 1;
+
+    let mut is_negative = false;
     let mut result: Option<i32> = None;
     while let Some(remaining) = tokens.next() {
         if remaining == 'e' {
             if let Some(_) = result {
-                return Ok(result.unwrap());
+                if is_negative {
+                    return Ok(result.unwrap() * -1);
+                } else {
+                    return Ok(result.unwrap());
+                }
             } else {
                 return Err("No Value Provided!".to_string());
+            }
+        } else if remaining == '-' {
+            // Look ahead - we can only tolerate one negative symbol
+            let mut lookahead = tokens.clone();
+
+            if lookahead.next().unwrap().is_numeric() == true {
+                is_negative = true;
+            } else {
+                return Err("Invalid integer value!".to_string());
             }
         } else {
             let remainder_as_digit = match remaining.to_digit(10) {
@@ -136,6 +151,18 @@ mod tests {
             result,
             Err("Invalid integer value!".to_string()),
             "Unable to correctly warn about string with invalid char in place of integer!"
+        );
+    }
+
+    #[test]
+
+    fn decode_invalid_integer_incorrect_negative_symbol() {
+        let result = decode_integer(&"i--1e".to_string());
+
+        assert_eq!(
+            result,
+            Err("Invalid integer value!".to_string()),
+            "Unable to correctly warn about string with multiple negative symbols!"
         );
     }
 

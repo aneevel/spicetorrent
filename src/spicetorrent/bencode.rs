@@ -4,12 +4,39 @@ pub fn decode_integer(chunk: &String) -> Result<i32, String> {
     // First char should always be an 'i'
     if let Some(token) = tokens.next() {
         if token != 'i' {
-            return Err("No Prefix".to_string());
+            return Err("No Prefix!".to_string());
         }
-        return Ok(5);
     }
 
-    Err("Not Implemented".to_string())
+    let mut multiplier = 1;
+    let mut result: Option<i32> = None;
+    while let Some(remaining) = tokens.next() {
+        if remaining == 'e' {
+            if let Some(_) = result {
+                return Ok(result.unwrap());
+            } else {
+                return Err("No Value Provided!".to_string());
+            }
+        } else {
+            let remainder_as_digit = match remaining.to_digit(10) {
+                Some(remainder) => remainder,
+
+                None => return Err("Invalid integer value!".to_string()),
+            };
+
+            let remainder = match i32::try_from(remainder_as_digit) {
+                Ok(remainder) => remainder,
+
+                Err(_) => return Err("Invalid integer value!".to_string()),
+            };
+
+            result = Some(result.map_or(remainder, |x| (x * multiplier) + remainder));
+
+            multiplier = multiplier * 10;
+        }
+    }
+
+    Err("Not Implemented!".to_string())
 }
 
 pub fn encode_integer(integer: i128) -> Result<String, String> {
@@ -44,7 +71,7 @@ mod tests {
         let result = decode_integer(&"10".to_string());
         assert_eq!(
             result,
-            Err("No Prefix".to_string()),
+            Err("No Prefix!".to_string()),
             "Unable to correctly warn about invalid integer with no prefix!"
         );
     }
@@ -54,7 +81,7 @@ mod tests {
         let result = decode_integer(&"i10".to_string());
         assert_eq!(
             result,
-            Err("No Affix".to_string()),
+            Err("No Affix!".to_string()),
             "Unable to correctly warn about invalid integer with no affix!"
         );
     }
@@ -64,7 +91,7 @@ mod tests {
         let result = decode_integer(&"i01e".to_string());
         assert_eq!(
             result,
-            Err("Leading Zero".to_string()),
+            Err("Leading Zero!".to_string()),
             "Unable to correctly warn about invalid integer with leading zero!"
         );
     }
@@ -74,7 +101,7 @@ mod tests {
         let result = decode_integer(&"i001e".to_string());
         assert_eq!(
             result,
-            Err("Leading Zero".to_string()),
+            Err("Leading Zero!".to_string()),
             "Unable to correctly warn about invalid integer with two leading zeroes!"
         );
     }
@@ -84,8 +111,31 @@ mod tests {
         let result = decode_integer(&"i-0e".to_string());
         assert_eq!(
             result,
-            Err("Negative Zero".to_string()),
+            Err("Negative Zero!".to_string()),
             "Unable to correctly warn about invalid integer with negative zero!"
+        );
+    }
+
+    #[test]
+    fn decode_invalid_integer_no_integer() {
+        let result = decode_integer(&"ie".to_string());
+
+        assert_eq!(
+            result,
+            Err("No Value Provided!".to_string()),
+            "Unable to correctly warn about string with no integer!"
+        );
+    }
+
+    #[test]
+
+    fn decode_invalid_integer_incorrect_affix() {
+        let result = decode_integer(&"if".to_string());
+
+        assert_eq!(
+            result,
+            Err("Invalid integer value!".to_string()),
+            "Unable to correctly warn about string with invalid char in place of integer!"
         );
     }
 

@@ -77,8 +77,8 @@ pub fn decode_integer(chunk: &String) -> Result<i32, String> {
     Err("No Affix!".to_string())
 }
 
-pub fn encode_integer(integer: i128) -> Result<String, String> {
-    Err("Not Implemented Yet!".to_string())
+pub fn encode_integer(integer: i128) -> String {
+    return format!("i{}e", integer);
 }
 
 #[cfg(test)]
@@ -195,7 +195,7 @@ mod tests {
         let result = encode_integer(10);
         assert_eq!(
             result,
-            Ok("i10e".to_string()),
+            "i10e".to_string(),
             "Unable to correctly encode valid integer 10!"
         );
     }
@@ -205,7 +205,7 @@ mod tests {
         let result = encode_integer(0);
         assert_eq!(
             result,
-            Ok("i0e".to_string()),
+            "i0e".to_string(),
             "Unable to correctly encode valid integer zero!"
         );
     }
@@ -217,7 +217,7 @@ mod tests {
 
         assert_eq!(
             result,
-            Ok("i-10e".to_string()),
+            "i-10e".to_string(),
             "Unable to correctly encode valid integer -10!"
         );
     }

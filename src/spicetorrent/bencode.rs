@@ -73,7 +73,8 @@ pub fn decode_integer(chunk: &String) -> Result<i32, String> {
         }
     }
 
-    Err("Not Implemented!".to_string())
+    // If we got here with no case culling, we have no affix
+    Err("No Affix!".to_string())
 }
 
 pub fn encode_integer(integer: i128) -> Result<String, String> {

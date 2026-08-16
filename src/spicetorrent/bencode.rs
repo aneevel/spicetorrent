@@ -33,13 +33,22 @@ pub fn decode_integer(chunk: &String) -> Result<i32, String> {
                 return Err("Invalid integer value!".to_string());
             }
         } else if remaining == '0' {
-            // Look ahead - we can only tolerate one zero, and the next must be the ending symbol.
-            let mut lookahead = tokens.clone();
+            // If we already have a result generated, this is just another digit and should be
+            // processed as one
+            if result.is_some() {
+                result = result.map(|x| x * multiplier);
 
-            if lookahead.next().unwrap() != 'e' {
-                return Err("Leading Zero!".to_string());
+                multiplier = multiplier * 10;
             } else {
-                return Ok(0);
+                // Otherwise, we have a leading zero
+                // Look ahead - we can only tolerate one zero, and the next must be the ending symbol.
+                let mut lookahead = tokens.clone();
+
+                if lookahead.next().unwrap() != 'e' {
+                    return Err("Leading Zero!".to_string());
+                } else {
+                    return Ok(0);
+                }
             }
         } else {
             let remainder_as_digit = match remaining.to_digit(10) {

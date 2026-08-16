@@ -26,8 +26,12 @@ pub fn decode_integer(chunk: &String) -> Result<i32, String> {
         } else if remaining == '-' {
             // Look ahead - we can only tolerate one negative symbol
             let mut lookahead = tokens.clone();
+            let next_value = lookahead.next().unwrap();
 
-            if lookahead.next().unwrap().is_numeric() == true {
+            // Handle special negative zero case
+            if next_value == '0' {
+                return Err("Negative Zero!".to_string());
+            } else if next_value.is_numeric() == true {
                 is_negative = true;
             } else {
                 return Err("Invalid integer value!".to_string());

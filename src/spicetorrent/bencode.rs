@@ -8,6 +8,18 @@ pub enum IntegerDecodingError {
     InvalidInteger,
 }
 
+#[derive(PartialEq, Debug)]
+pub enum StringDecodingError {
+    NoPrefix,
+    NoColon,
+    IncorrectLengthSpecifier,
+    InvalidContent,
+}
+
+pub fn decode_string(chunk: &String) -> Result<String, StringDecodingError> {
+    return Err(StringDecodingError::InvalidContent);
+}
+
 pub fn decode_integer(chunk: &String) -> Result<i32, IntegerDecodingError> {
     let mut tokens = chunk.chars();
 
@@ -176,7 +188,6 @@ mod tests {
     }
 
     #[test]
-
     fn decode_invalid_integer_incorrect_affix() {
         let result = decode_integer(&"if".to_string());
 
@@ -188,7 +199,6 @@ mod tests {
     }
 
     #[test]
-
     fn decode_invalid_integer_incorrect_negative_symbol() {
         let result = decode_integer(&"i--1e".to_string());
 
@@ -200,7 +210,6 @@ mod tests {
     }
 
     #[test]
-
     fn encode_positive_integer() {
         let result = encode_integer(10);
         assert_eq!(
@@ -221,7 +230,6 @@ mod tests {
     }
 
     #[test]
-
     fn encode_negative_integer() {
         let result = encode_integer(-10);
 
@@ -229,6 +237,72 @@ mod tests {
             result,
             "i-10e".to_string(),
             "Unable to correctly encode valid integer -10!"
+        );
+    }
+
+    #[test]
+    fn decode_valid_string() {
+        let result = decode_string(&"6:coding".to_string());
+
+        assert_eq!(
+            result,
+            Ok("coding".to_string()),
+            "Unable to correctly decode valid string '6:coding'"
+        );
+    }
+
+    #[test]
+    fn decode_valid_string_2() {
+        let result = decode_string(&"4:spam".to_string());
+
+        assert_eq!(
+            result,
+            Ok("spam".to_string()),
+            "Unable to correctly decode valid string '4:spam'"
+        );
+    }
+
+    #[test]
+    fn decode_invalid_string_no_prefix() {
+        let result = decode_string(&"3eggs".to_string());
+
+        assert_eq!(
+            result,
+            Err(StringDecodingError::NoPrefix),
+            "Unable to correctly report error of no prefix!"
+        );
+    }
+
+    #[test]
+    fn decode_invalid_string_no_content() {
+        let result = decode_string(&"0:".to_string());
+
+        assert_eq!(
+            result,
+            Err(StringDecodingError::InvalidContent),
+            "Unable to correctly report error of invalid string content!"
+        );
+    }
+
+    #[test]
+    fn decode_invalid_string_no_colon() {
+        let result = decode_string(&"4spam".to_string());
+
+        assert_eq!(
+            result,
+            Err(StringDecodingError::NoColon),
+            "Unable to correctly report error of no colon separator!"
+        );
+    }
+
+    #[test]
+    fn decode_invalid_string_incorrect_length_specifier() {
+        let result = decode_string(&"3:eggs".to_string());
+
+        assert_eq!(
+            result,
+            Err(StringDecodingError::IncorrectLengthSpecifier),
+            "Unable to correctly report error of incorrect length specifier!"
         );
     }
 }

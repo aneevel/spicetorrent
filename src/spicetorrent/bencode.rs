@@ -17,6 +17,69 @@ pub enum StringDecodingError {
 }
 
 pub fn decode_string(chunk: &String) -> Result<String, StringDecodingError> {
+    let mut tokens = chunk.chars();
+
+    // First char should always be a positive, non-zero integer
+    if let Some(token) = tokens.next() {
+        let length = match token.to_digit(10) {
+            Some(length) => length,
+            None => return Err(StringDecodingError::NoPrefix),
+        };
+
+        let mut length = match i32::try_from(length) {
+            Ok(length) => length,
+            Err(_) => return Err(StringDecodingError::NoPrefix),
+        };
+
+        // Grab until we have the entire integer
+        let mut lookahead = tokens.clone();
+        let mut multiplier = 10;
+
+        // Go until we reach a colon
+        while let Some(specifier) = lookahead.next() {
+            if specifier == ':' {
+                break;
+            } else if !specifier.is_digit(10) {
+                return Err(StringDecodingError::NoColon);
+            } else {
+                let specifier = match specifier.to_digit(10) {
+                    Some(specifier) => specifier,
+                    None => return Err(StringDecodingError::NoPrefix),
+                };
+
+                let specifier = match i32::try_from(specifier) {
+                    Ok(specifier) => specifier,
+                    Err(_) => return Err(StringDecodingError::NoPrefix),
+                };
+
+                length = length * multiplier + specifier;
+                multiplier = multiplier * 10;
+            }
+        }
+
+        // Throw away colon
+        tokens.next();
+
+        let mut result = String::from("");
+
+        // Pop tokens until we hit that length
+        for _ in 0..length {
+            match tokens.next() {
+                Some(token) => result.push(token),
+                None => return Err(StringDecodingError::IncorrectLengthSpecifier),
+            };
+        }
+
+        if result.len() as i32 != length {
+            return Err(StringDecodingError::IncorrectLengthSpecifier);
+        }
+
+        if result.len() == 0 {
+            return Err(StringDecodingError::InvalidContent);
+        }
+
+        return Ok(result);
+    }
     return Err(StringDecodingError::InvalidContent);
 }
 
@@ -263,8 +326,8 @@ mod tests {
     }
 
     #[test]
-    fn decode_invalid_string_no_prefix() {
-        let result = decode_string(&"3eggs".to_string());
+    fn decode_invalid_string_no_prefix_2() {
+        let result = decode_string(&"-3:eggs".to_string());
 
         assert_eq!(
             result,
@@ -297,7 +360,7 @@ mod tests {
 
     #[test]
     fn decode_invalid_string_incorrect_length_specifier() {
-        let result = decode_string(&"3:eggs".to_string());
+        let result = decode_string(&"4:egg".to_string());
 
         assert_eq!(
             result,

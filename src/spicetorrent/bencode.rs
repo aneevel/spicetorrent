@@ -35,7 +35,12 @@ pub fn encode_list(list: Vec<BencodeType>) -> String {
 }
 
 pub fn decode_string(chunk: &String) -> String {
-    return String::from("");
+    let regex = Regex::new(r"(\d)(:)([A-Za-z]*)").unwrap();
+    let Some(captures) = regex.captures(chunk) else {
+        return String::from("");
+    };
+
+    return String::from(&captures[3]);
 }
 
 fn encode_string(string: &String) -> String {
@@ -48,9 +53,6 @@ pub fn decode_integer(chunk: &String) -> i32 {
         return 0;
     };
 
-    for capture in captures.iter() {
-        println!("Capture is: {}", capture.unwrap().as_str());
-    }
     return captures[2].parse::<i32>().unwrap();
 }
 

@@ -1,14 +1,15 @@
 #[derive(PartialEq, Debug)]
 pub enum BencodeType {
     Int(i32),
-    Str(&'static str),
+    Str(String),
 }
 
 #[derive(PartialEq, Debug)]
 pub enum ListDecodingError {
     NoPrefix,
     NoAffix,
-    InvalidInteger,
+    InvalidIntegerInList,
+    InvalidStringInList,
 }
 
 #[derive(PartialEq, Debug)]
@@ -33,8 +34,8 @@ pub fn decode_list(chunk: &String) -> Result<Vec<BencodeType>, ListDecodingError
     let mut tokens = chunk.chars();
 
     // First char should always be the char 'l'
-    if let Some(token) = tokens.clone().peekable().peek() {
-        if *token != 'l' {
+    if let Some(token) = tokens.next() {
+        if token != 'l' {
             return Err(ListDecodingError::NoPrefix);
         } else {
             let mut list: Vec<BencodeType> = vec![];
@@ -52,6 +53,65 @@ pub fn decode_list(chunk: &String) -> Result<Vec<BencodeType>, ListDecodingError
 
                     list.push(BencodeType::Int(decode_integer(&integer_chunk).unwrap()));
                 } else if token.is_digit(10) {
+                    let length = match token.to_digit(10) {
+                        Some(length) => length,
+                        None => {
+                            return Err(ListDecodingError::InvalidStringInList);
+                        }
+                    };
+
+                    let mut length = match i32::try_from(length) {
+                        Ok(length) => length,
+                        Err(_) => {
+                            return Err(ListDecodingError::InvalidStringInList);
+                        }
+                    };
+
+                    // Grab until we have the entire integer
+                    let mut lookahead = tokens.clone();
+                    let mut multiplier = 10;
+
+                    // Go until we reach a colon
+                    while let Some(specifier) = lookahead.next() {
+                        if specifier == ':' {
+                            break;
+                        } else if !specifier.is_digit(10) {
+                            return Err(ListDecodingError::InvalidStringInList);
+                        } else {
+                            let specifier = match specifier.to_digit(10) {
+                                Some(specifier) => specifier,
+                                None => {
+                                    return Err(ListDecodingError::InvalidStringInList);
+                                }
+                            };
+
+                            let specifier = match i32::try_from(specifier) {
+                                Ok(specifier) => specifier,
+                                Err(_) => {
+                                    return Err(ListDecodingError::InvalidStringInList);
+                                }
+                            };
+
+                            length = length * multiplier + specifier;
+                            multiplier = multiplier * 10;
+
+                            // Skip an iteration for each individual integer in length
+                            tokens.next();
+                        }
+                    }
+
+                    let mut string_chunk = length.to_string();
+
+                    string_chunk.push(tokens.next().unwrap());
+
+                    // Grab colon as well - just iterate one more
+                    for _ in 0..length {
+                        string_chunk.push(tokens.next().unwrap());
+                    }
+
+                    let result = decode_string(&string_chunk).unwrap();
+
+                    list.push(BencodeType::Str(decode_string(&string_chunk).unwrap()));
                 } else if token == 'e' {
                     return Ok(list);
                 }
@@ -103,6 +163,9 @@ pub fn decode_string(chunk: &String) -> Result<String, StringDecodingError> {
 
                 length = length * multiplier + specifier;
                 multiplier = multiplier * 10;
+
+                // Skip an iteration for each individual integer in length
+                tokens.next();
             }
         }
 
@@ -379,6 +442,17 @@ mod tests {
     }
 
     #[test]
+    fn decode_valid_string_3() {
+        let result = decode_string(&"10:Challenges".to_string());
+
+        assert_eq!(
+            result,
+            Ok("Challenges".to_string()),
+            "Unable to correctly decode valid string '10:Challenges"
+        );
+    }
+
+    #[test]
     fn decode_invalid_string_no_prefix_2() {
         let result = decode_string(&"-3:eggs".to_string());
 
@@ -439,8 +513,8 @@ mod tests {
         assert_eq!(
             result,
             Ok(vec![
-                BencodeType::Str("Coding"),
-                BencodeType::Str("Challenges")
+                BencodeType::Str("Coding".to_string()),
+                BencodeType::Str("Challenges".to_string())
             ]),
             "Unable to correctly decode list of strings!"
         );
@@ -459,15 +533,15 @@ mod tests {
 
     #[test]
     fn decode_valid_list_with_strings_and_ints() {
-        let result = decode_list(&"li10ei5e6:Coding10Challengese".to_string());
+        let result = decode_list(&"li10ei5e6:Coding10:Challengese".to_string());
 
         assert_eq!(
             result,
             Ok(vec![
                 BencodeType::Int(10),
                 BencodeType::Int(5),
-                BencodeType::Str("Coding"),
-                BencodeType::Str("Challenges")
+                BencodeType::Str("Coding".to_string()),
+                BencodeType::Str("Challenges".to_string())
             ]),
             "Unable to correctly decode mixed list of ints and strings"
         );

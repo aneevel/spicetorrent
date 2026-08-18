@@ -83,6 +83,10 @@ pub fn decode_string(chunk: &String) -> Result<String, StringDecodingError> {
     return Err(StringDecodingError::InvalidContent);
 }
 
+fn encode_string(string: &String) -> String {
+    return format!("{}:{}", string.len(), string);
+}
+
 pub fn decode_integer(chunk: &String) -> Result<i32, IntegerDecodingError> {
     let mut tokens = chunk.chars();
 
@@ -366,6 +370,16 @@ mod tests {
             result,
             Err(StringDecodingError::IncorrectLengthSpecifier),
             "Unable to correctly report error of incorrect length specifier!"
+        );
+    }
+
+    #[test]
+    fn encode_random_string() {
+        let result = encode_string(&"eggs".to_string());
+
+        assert_eq!(
+            result, "4:eggs",
+            "Unable to correctly encode valid string 'eggs'!"
         );
     }
 }

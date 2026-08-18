@@ -1,4 +1,17 @@
 #[derive(PartialEq, Debug)]
+pub enum BencodeType {
+    Int(i32),
+    Str(&'static str),
+}
+
+#[derive(PartialEq, Debug)]
+pub enum ListDecodingError {
+    NoPrefix,
+    NoAffix,
+    InvalidInteger,
+}
+
+#[derive(PartialEq, Debug)]
 pub enum IntegerDecodingError {
     NoPrefix,
     NoAffix,
@@ -14,6 +27,42 @@ pub enum StringDecodingError {
     NoColon,
     IncorrectLengthSpecifier,
     InvalidContent,
+}
+
+pub fn decode_list(chunk: &String) -> Result<Vec<BencodeType>, ListDecodingError> {
+    let mut tokens = chunk.chars();
+
+    // First char should always be the char 'l'
+    if let Some(token) = tokens.clone().peekable().peek() {
+        if *token != 'l' {
+            return Err(ListDecodingError::NoPrefix);
+        } else {
+            let mut list: Vec<BencodeType> = vec![];
+            // Now we can process individual elements
+            while let Some(token) = tokens.next() {
+                if token == 'i' {
+                    // Build sequence until we reach the end
+                    let mut integer_chunk = String::from("i");
+                    while let Some(token) = tokens.next() {
+                        integer_chunk.push(token);
+                        if token == 'e' {
+                            break;
+                        }
+                    }
+
+                    list.push(BencodeType::Int(decode_integer(&integer_chunk).unwrap()));
+                } else if token.is_digit(10) {
+                } else if token == 'e' {
+                    return Ok(list);
+                }
+            }
+        }
+    }
+    return Err(ListDecodingError::NoAffix);
+}
+
+pub fn encode_list(list: Vec<BencodeType>) -> String {
+    return format!("hi!");
 }
 
 pub fn decode_string(chunk: &String) -> Result<String, StringDecodingError> {
@@ -380,6 +429,47 @@ mod tests {
         assert_eq!(
             result, "4:eggs",
             "Unable to correctly encode valid string 'eggs'!"
+        );
+    }
+
+    #[test]
+    fn decode_valid_list_with_strings() {
+        let result = decode_list(&"l6:Coding10:Challengese".to_string());
+
+        assert_eq!(
+            result,
+            Ok(vec![
+                BencodeType::Str("Coding"),
+                BencodeType::Str("Challenges")
+            ]),
+            "Unable to correctly decode list of strings!"
+        );
+    }
+
+    #[test]
+    fn decode_valid_list_with_ints() {
+        let result = decode_list(&"li10ei5ee".to_string());
+
+        assert_eq!(
+            result,
+            Ok(vec![BencodeType::Int(10), BencodeType::Int(5)]),
+            "Unable to correctly decode list of ints!"
+        );
+    }
+
+    #[test]
+    fn decode_valid_list_with_strings_and_ints() {
+        let result = decode_list(&"li10ei5e6:Coding10Challengese".to_string());
+
+        assert_eq!(
+            result,
+            Ok(vec![
+                BencodeType::Int(10),
+                BencodeType::Int(5),
+                BencodeType::Str("Coding"),
+                BencodeType::Str("Challenges")
+            ]),
+            "Unable to correctly decode mixed list of ints and strings"
         );
     }
 }

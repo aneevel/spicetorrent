@@ -1,7 +1,18 @@
+use std::fmt;
+
 #[derive(PartialEq, Debug)]
 pub enum BencodeType {
     Int(i32),
     Str(String),
+}
+
+impl fmt::Display for BencodeType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            BencodeType::Int(value) => write!(f, "{}", value),
+            BencodeType::Str(value) => write!(f, "{}", value),
+        }
+    }
 }
 
 #[derive(PartialEq, Debug)]
@@ -111,7 +122,7 @@ pub fn decode_list(chunk: &String) -> Result<Vec<BencodeType>, ListDecodingError
 
                     let result = decode_string(&string_chunk).unwrap();
 
-                    list.push(BencodeType::Str(decode_string(&string_chunk).unwrap()));
+                    list.push(BencodeType::Str(result));
                 } else if token == 'e' {
                     return Ok(list);
                 }
@@ -122,7 +133,16 @@ pub fn decode_list(chunk: &String) -> Result<Vec<BencodeType>, ListDecodingError
 }
 
 pub fn encode_list(list: Vec<BencodeType>) -> String {
-    return format!("hi!");
+    let mut encoded = String::from("l");
+    for element in list {
+        match element {
+            BencodeType::Int(value) => encoded.push_str(&encode_integer(value)),
+            BencodeType::Str(value) => encoded.push_str(&encode_string(&value)),
+        }
+    }
+
+    encoded.push('e');
+    return encoded;
 }
 
 pub fn decode_string(chunk: &String) -> Result<String, StringDecodingError> {
@@ -278,7 +298,7 @@ pub fn decode_integer(chunk: &String) -> Result<i32, IntegerDecodingError> {
     Err(IntegerDecodingError::NoAffix)
 }
 
-pub fn encode_integer(integer: i128) -> String {
+pub fn encode_integer(integer: i32) -> String {
     return format!("i{}e", integer);
 }
 
@@ -544,6 +564,43 @@ mod tests {
                 BencodeType::Str("Challenges".to_string())
             ]),
             "Unable to correctly decode mixed list of ints and strings"
+        );
+    }
+
+    #[test]
+    fn encode_valid_list_with_strings() {
+        let result = encode_list(vec![
+            BencodeType::Str("Coding".to_string()),
+            BencodeType::Str("Challenges".to_string()),
+        ]);
+
+        assert_eq!(
+            result, "l6:Coding10:Challengese",
+            "Unable to correctly encode valid list of strings"
+        );
+    }
+
+    #[test]
+    fn encode_valid_list_with_ints() {
+        let result = encode_list(vec![BencodeType::Int(5), BencodeType::Int(32)]);
+
+        assert_eq!(
+            result, "li5ei32ee",
+            "Unable to correctly encode valid list of integers"
+        );
+    }
+
+    #[test]
+    fn encode_valid_list_with_strings_and_ints() {
+        let result = encode_list(vec![
+            BencodeType::Int(5),
+            BencodeType::Str("Coding".to_string()),
+            BencodeType::Int(32),
+        ]);
+
+        assert_eq!(
+            result, "li5e6:Codingi32ee",
+            "Unable to correctly encode valid list of mixed strings and ints"
         );
     }
 }

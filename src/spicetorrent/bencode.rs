@@ -1,4 +1,4 @@
-use regex::Regex;
+use fancy_regex::Regex;
 use std::collections::HashMap;
 use std::fmt;
 
@@ -18,9 +18,20 @@ impl fmt::Display for BencodeType {
 }
 
 pub fn decode_list(chunk: &String) -> Vec<BencodeType> {
+    let regex = Regex::new(r"(?:(\d+):([A-Za-z]+(?=i-?\d+e|\d+:|$))|i(-?\d+)e)").unwrap();
+
+    let result = regex.captures(chunk);
+
+    let captures = result
+        .expect("Error running list regex")
+        .expect("No match found");
+
+    for capture in captures.iter() {
+        println!("{}", capture.unwrap().as_str());
+    }
+
     return vec![];
 }
-
 pub fn encode_list(list: Vec<BencodeType>) -> String {
     let mut encoded = String::from("l");
     for element in list {
@@ -36,11 +47,14 @@ pub fn encode_list(list: Vec<BencodeType>) -> String {
 
 pub fn decode_string(chunk: &String) -> String {
     let regex = Regex::new(r"(\d)(:)([A-Za-z]*)").unwrap();
-    let Some(captures) = regex.captures(chunk) else {
-        return String::from("");
-    };
 
-    return String::from(&captures[3]);
+    let result = regex.captures(chunk);
+
+    let captures = result
+        .expect("Error running string regex")
+        .expect("No match found");
+
+    return String::from(captures.get(3).unwrap().as_str());
 }
 
 fn encode_string(string: &String) -> String {
@@ -49,11 +63,14 @@ fn encode_string(string: &String) -> String {
 
 pub fn decode_integer(chunk: &String) -> i32 {
     let regex = Regex::new(r"(i)(-?\d+)(e)").unwrap();
-    let Some(captures) = regex.captures(chunk) else {
-        return 0;
-    };
 
-    return captures[2].parse::<i32>().unwrap();
+    let result = regex.captures(chunk);
+
+    let captures = result
+        .expect("Error running int regex")
+        .expect("No match found");
+
+    return captures.get(2).unwrap().as_str().parse::<i32>().unwrap();
 }
 
 pub fn encode_integer(integer: i32) -> String {
